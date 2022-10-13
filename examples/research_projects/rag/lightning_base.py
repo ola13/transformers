@@ -272,7 +272,7 @@ class InitCallback(pl.Callback):
         if (
             trainer.is_global_zero and trainer.global_rank == 0
         ):  # we initialize the retriever only on master worker with RAY. In new pytorch-lightning accelorators are removed.
-            pl_module.model.rag.retriever.init_retrieval()  # better to use hook functions.
+            pl_module.model.rag.retriever.init_retrieval(distributed_port=12345)  # better to use hook functions.
 
 
 class LoggingCallback(pl.Callback):
@@ -391,7 +391,6 @@ def generic_train(
 
     trainer = pl.Trainer.from_argparse_args(
         args,
-        weights_summary=None,
         callbacks=[logging_callback] + extra_callbacks + [checkpoint_callback] + [InitCallback()],
         # plugins=[custom_ddp_plugin],
         logger=logger,

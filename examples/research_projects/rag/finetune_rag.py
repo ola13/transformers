@@ -618,7 +618,6 @@ def main(args=None, model=None) -> GenerativeQAModule:
         early_stopping_callback=es_callback,
         logger=training_logger,
         custom_ddp_plugin=CustomDDP() if args.gpus > 1 else None,
-        profiler=pl.profiler.AdvancedProfiler() if args.profile else None,
     )
     pickle_save(model.hparams, model.output_dir / "hparams.pkl")
 
