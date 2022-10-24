@@ -4,8 +4,8 @@ export PYTHONPATH="../":"${PYTHONPATH}"
 # A sample finetuning run, you need to specify data_dir, output_dir and model_name_or_path
 # run ./examples/rag/finetune_rag.sh --help to see all the possible options
 
-DATA_DIR=/home/piktus_huggingface_co/transformers/data/nq_open/
-OUTPUT_DIR=/home/piktus_huggingface_co/transformers/data/output/
+DATA_DIR=/home/ec2-user/piktus/transformers/data/nq_open/
+OUTPUT_DIR=/home/ec2-user/piktus/transformers/data/output/
 MODEL_NAME_OR_PATH=facebook/rag-sequence-nq
 
 python examples/research_projects/rag/finetune_rag.py \

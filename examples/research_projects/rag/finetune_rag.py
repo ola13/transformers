@@ -84,7 +84,7 @@ class CustomDDP(DDPStrategy):
         os.environ["MASTER_PORT"] = str(self.cluster_environment.main_port)
         if not torch.distributed.is_initialized():
             logger.info(f"initializing ddp: GLOBAL_RANK: {global_rank}, MEMBER: {global_rank + 1}/{world_size}")
-            torch_distrib.init_process_group(self.torch_distributed_backend, rank=global_rank, world_size=world_size)
+            super().setup_environment()
 
         print("DISTIRBUTED PORT", module.hparams.distributed_port)
         if module.is_rag_model:

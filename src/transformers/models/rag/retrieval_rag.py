@@ -39,7 +39,8 @@ logger = logging.get_logger(__name__)
 
 
 # LEGACY_INDEX_PATH = "https://storage.googleapis.com/huggingface-nlp/datasets/wiki_dpr/"
-LEGACY_INDEX_PATH = "/home/piktus_huggingface_co/transformers/data/"
+# LEGACY_INDEX_PATH = "/home/piktus_huggingface_co/transformers/data/"
+LEGACY_INDEX_PATH = "/home/ec2-user/piktus/transformers/data/"
 
 
 class Index:
