@@ -164,3 +164,7 @@ tags
 
 # DS_Store (MacOS)
 .DS_Store
+
+outputs/
+biencoder-nq-dev.json
+*.code-workspace

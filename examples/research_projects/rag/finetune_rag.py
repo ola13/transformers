@@ -14,7 +14,8 @@ import pytorch_lightning as pl
 import torch
 import torch.distributed as dist
 import torch.distributed as torch_distrib
-from pytorch_lightning.plugins.training_type import DDPPlugin
+from pytorch_lightning.strategies.ddp import DDPStrategy
+# from pytorch_lightning.plugins.training_type import DDPPlugin
 from torch.utils.data import DataLoader
 
 from transformers import (
@@ -73,17 +74,19 @@ class AttrDict(dict):
         self.__dict__ = self
 
 
-class CustomDDP(DDPPlugin):
-    def init_ddp_connection(self, global_rank=None, world_size=None) -> None:
+class CustomDDP(DDPStrategy):
+    def setup_environment(self, global_rank=None, world_size=None) -> None:
+        logger.info("running setup_environment")
         module = self.model
         global_rank = global_rank if global_rank is not None else self.cluster_environment.global_rank()
         world_size = world_size if world_size is not None else self.cluster_environment.world_size()
-        os.environ["MASTER_ADDR"] = self.cluster_environment.master_address()
-        os.environ["MASTER_PORT"] = str(self.cluster_environment.master_port())
+        os.environ["MASTER_ADDR"] = self.cluster_environment.main_address
+        os.environ["MASTER_PORT"] = str(self.cluster_environment.main_port)
         if not torch.distributed.is_initialized():
             logger.info(f"initializing ddp: GLOBAL_RANK: {global_rank}, MEMBER: {global_rank + 1}/{world_size}")
             torch_distrib.init_process_group(self.torch_distributed_backend, rank=global_rank, world_size=world_size)
 
+        print("DISTIRBUTED PORT", module.hparams.distributed_port)
         if module.is_rag_model:
             self.distributed_port = module.hparams.distributed_port
             if module.distributed_retriever == "pytorch":
@@ -102,6 +105,8 @@ class GenerativeQAModule(BaseTransformer):
 
     def __init__(self, hparams, **kwargs):
         # when loading from a pytorch lightning checkpoint, hparams are passed as dict
+        logger.info("HPARAMS")
+        logger.info(hparams)
         if isinstance(hparams, dict):
             hparams = AttrDict(hparams)
         if hparams.model_type == "rag_sequence":
@@ -188,7 +193,7 @@ class GenerativeQAModule(BaseTransformer):
 
         # For single GPU training, init_ddp_connection is not called.
         # So we need to initialize the retrievers here.
-        if hparams.gpus <= 1:
+        if hparams.devices <= 1:
             if hparams.distributed_retriever == "ray":
                 self.model.retriever.init_retrieval()
             elif hparams.distributed_retriever == "pytorch":
@@ -534,17 +539,10 @@ class GenerativeQAModule(BaseTransformer):
 
 
 def main(args=None, model=None) -> GenerativeQAModule:
-    parser = argparse.ArgumentParser()
-    parser = pl.Trainer.add_argparse_args(parser)
-    parser = GenerativeQAModule.add_model_specific_args(parser, os.getcwd())
-    parser = GenerativeQAModule.add_retriever_specific_args(parser)
-
-    args = args or parser.parse_args()
-
     Path(args.output_dir).mkdir(exist_ok=True)
 
     named_actors = []
-    if args.distributed_retriever == "ray" and args.gpus > 1:
+    if args.distributed_retriever == "ray" and args.devices > 1:
         if not is_ray_available():
             raise RuntimeError("Please install Ray to use the Ray distributed retriever.")
         # Connect to an existing Ray cluster.
@@ -617,7 +615,7 @@ def main(args=None, model=None) -> GenerativeQAModule:
         checkpoint_callback=get_checkpoint_callback(args.output_dir, model.val_metric),
         early_stopping_callback=es_callback,
         logger=training_logger,
-        custom_ddp_plugin=CustomDDP() if args.gpus > 1 else None,
+        ddp_strategy=CustomDDP() if args.devices > 1 else None,
     )
     pickle_save(model.hparams, model.output_dir / "hparams.pkl")
 
@@ -642,7 +640,29 @@ if __name__ == "__main__":
         action="store_true",
         help="If True, use pytorch_lightning.profiler.AdvancedProfiler to profile the Trainer.",
     )
-
+    """
+    parser.add_argument(
+        "--accelerator",
+        default='gpu',
+        type=str,
+        required=True,
+        help="Accelerator",
+    )
+    parser.add_argument(
+        "--devices",
+        default=None,
+        type=int,
+        help="Number of devices",
+    )
+    """
+    parser.add_argument(
+        "--distributed_port",
+        default=-1,
+        type=int,
+        help="Number of devices",
+    )
     args = parser.parse_args()
+    args.devices = int(args.devices)
+    print(args)
 
     main(args)

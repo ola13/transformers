@@ -38,7 +38,8 @@ if is_faiss_available():
 logger = logging.get_logger(__name__)
 
 
-LEGACY_INDEX_PATH = "https://storage.googleapis.com/huggingface-nlp/datasets/wiki_dpr/"
+# LEGACY_INDEX_PATH = "https://storage.googleapis.com/huggingface-nlp/datasets/wiki_dpr/"
+LEGACY_INDEX_PATH = "/home/piktus_huggingface_co/transformers/data/"
 
 
 class Index:
@@ -395,6 +396,7 @@ class RagRetriever:
     @staticmethod
     def _build_index(config):
         if config.index_name == "legacy":
+            print("LEGACY INDEX")
             return LegacyIndex(
                 config.retrieval_vector_size,
                 config.index_path or LEGACY_INDEX_PATH,

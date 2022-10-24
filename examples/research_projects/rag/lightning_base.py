@@ -163,7 +163,7 @@ class BaseTransformer(pl.LightningModule):
 
     def total_steps(self) -> int:
         """The number of total training steps that will be run. Used for lr scheduler purposes."""
-        num_devices = max(1, self.hparams.gpus)  # TODO: consider num_tpu_cores
+        num_devices = max(1, self.hparams.devices)  # TODO: consider num_tpu_cores
         effective_batch_size = self.hparams.train_batch_size * self.hparams.accumulate_grad_batches * num_devices
         return (self.dataset_size / effective_batch_size) * self.hparams.max_epochs
 
@@ -272,7 +272,8 @@ class InitCallback(pl.Callback):
         if (
             trainer.is_global_zero and trainer.global_rank == 0
         ):  # we initialize the retriever only on master worker with RAY. In new pytorch-lightning accelorators are removed.
-            pl_module.model.rag.retriever.init_retrieval(distributed_port=12345)  # better to use hook functions.
+            logger.info("running on_sanity_check_start")
+            # pl_module.model.rag.retriever.init_retrieval()  # better to use hook functions.
 
 
 class LoggingCallback(pl.Callback):
@@ -352,7 +353,7 @@ def generic_train(
     args: argparse.Namespace,
     early_stopping_callback=None,
     logger=True,  # can pass WandbLogger() here
-    custom_ddp_plugin=None,
+    ddp_strategy=None,
     extra_callbacks=[],
     checkpoint_callback=None,
     logging_callback=None,
@@ -377,22 +378,23 @@ def generic_train(
     train_params = {}
 
     # TODO: remove with PyTorch 1.6 since pl uses native amp
-    if args.fp16:
-        train_params["precision"] = 16
-        # train_params["amp_level"] = args.fp16_opt_level
+    # if args.fp16:
+    #    train_params["precision"] = 16
+    #    # train_params["amp_level"] = args.fp16_opt_level
 
-    if args.gpus > 1:
-        train_params["accelerator"] = "auto"  # "ddp"
-        train_params["strategy"] = "ddp"
+    # /home/piktus_huggingface_co/anaconda3/envs/benchmark/lib/python3.9/site-packages/pytorch_lightning/trainer/connectors/accelerator_connector.py:447: LightningDeprecationWarning:
+    # Setting `Trainer(gpus=8)` is deprecated in v1.7 and will be removed in v2.0. Please use `Trainer(accelerator='gpu', devices=8)` instead.
+    # train_params["accelerator"] = "auto"  # "ddp"
+    if args.devices > 1:
+        train_params["strategy"] = ddp_strategy # "ddp"
 
     train_params["accumulate_grad_batches"] = args.accumulate_grad_batches
     train_params["profiler"] = None  # extra_train_kwargs.get("profiler", None) #get unwanted logs
-    train_params["devices"] = "auto"
+    # train_params["devices"] = "auto"
 
     trainer = pl.Trainer.from_argparse_args(
         args,
         callbacks=[logging_callback] + extra_callbacks + [checkpoint_callback] + [InitCallback()],
-        # plugins=[custom_ddp_plugin],
         logger=logger,
         **train_params,
     )
