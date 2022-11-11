@@ -9,8 +9,12 @@ def convert_dataset(source_file, target_question_file, target_answer_file):
         target_answer_file, "w"
     ) as target_answer:
         for line in source:
-            answer = choice(line["answer"])
-            question = line["question"]
+            answer = choice(line["answer"]).strip()
+            question = line["question"].strip()
+            question = " ".join(question.split())
+            answer = " ".join(answer.split())
+            if answer is None or answer == "" or question is None or question == "":
+                continue
             target_question.write(question + "\n")
             target_answer.write(answer + "\n")
 

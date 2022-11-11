@@ -280,6 +280,8 @@ class GenerativeQAModule(BaseTransformer):
     def validation_step(self, batch, batch_idx) -> Dict:
         return self._generative_step(batch)
 
+    # TODO implement validation_step_end
+    # https://pytorch-lightning.readthedocs.io/en/stable/common/lightning_module.html#validating-with-dataparallel
     def validation_epoch_end(self, outputs, prefix="val") -> Dict:
         self.step_count += 1
         losses = {k: torch.stack([x[k] for x in outputs]).mean() for k in self.loss_names}
@@ -300,8 +302,17 @@ class GenerativeQAModule(BaseTransformer):
         metrics = {f"{prefix}_avg_{k}": x for k, x in losses.items()}
         metrics["step_count"] = self.step_count
         self.save_metrics(metrics, prefix)  # writes to self.metrics_save_path
-        preds = flatten_list([x["preds"] for x in outputs])
-        return {"log": metrics, "preds": preds, f"{prefix}_loss": loss, f"{prefix}_{self.val_metric}": metrics_tensor}
+        # preds = flatten_list([x["preds"] for x in outputs])
+
+        log_dict = {
+            "val_avg_em": metrics["val_avg_em"],
+            "step_count": metrics["step_count"],
+            "val_avg_loss": metrics["val_avg_loss"],
+            "val_loss": loss,
+            "val_em": metrics_tensor,
+        }
+        self.log_dict(log_dict)
+
 
     def save_metrics(self, latest_metrics, type_path) -> None:
         self.metrics[type_path].append(latest_metrics)
